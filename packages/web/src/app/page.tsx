@@ -66,6 +66,15 @@ const tools = [
     color: "from-teal-500 to-cyan-600",
     visual: "checker",
   },
+  {
+    id: "ai-review",
+    name: "100人AIレビュー",
+    tagline: "AIモニター100人が御社を評価",
+    description: "LP、商品ページ、広告を100人のAIペルソナがレビュー。多角的なフィードバックを即座に。",
+    icon: "👥",
+    color: "from-indigo-500 to-violet-600",
+    visual: "crowd",
+  },
 ];
 
 export default function Home() {
@@ -256,6 +265,28 @@ function ToolVisual({ type, active }: { type: string; active: boolean }) {
             </span>
             <span className="text-sm">{active ? "修正済み" : "チェック中..."}</span>
           </div>
+        </div>
+      );
+
+    case "crowd":
+      return (
+        <div className="flex flex-col items-center">
+          <div className="flex flex-wrap justify-center gap-1 w-40">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div
+                key={i}
+                className={`h-6 w-6 rounded-full transition-all duration-300 ${
+                  active
+                    ? i < 15 ? "bg-green-400/80" : i < 18 ? "bg-yellow-400/80" : "bg-red-400/80"
+                    : "bg-white/30"
+                }`}
+                style={{ transitionDelay: active ? `${i * 30}ms` : "0ms" }}
+              />
+            ))}
+          </div>
+          <p className="mt-3 text-sm text-white/80">
+            {active ? "👍 75人が好評価" : "100人が評価中..."}
+          </p>
         </div>
       );
 
