@@ -1,70 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 const tools = [
-  {
-    id: "ab-test",
-    name: "ABテスト",
-    tagline: "2つのURLを入れるだけ",
-    description: "Google Optimize終了後の救世主。面倒な設定なし、どっちが勝ちかすぐわかる。",
-    icon: "⚖️",
-    color: "from-violet-500 to-purple-600",
-    visual: "versus",
-  },
   {
     id: "aeo",
     name: "AEOチェッカー",
     tagline: "AIに自社が出てるか確認",
-    description: "ChatGPT、Gemini、Perplexityで御社が言及されてるか週次でチェック。",
+    description: "ChatGPT、Claudeで御社が言及されてるかチェック。",
     icon: "🤖",
     color: "from-cyan-500 to-blue-600",
     visual: "multiline",
-  },
-  {
-    id: "meo",
-    name: "MEO・口コミ",
-    tagline: "Googleマップの評判を育てる",
-    description: "レビュー促進QRコード発行。口コミ数・評価の推移が一目でわかる。",
-    icon: "⭐",
-    color: "from-amber-500 to-orange-600",
-    visual: "stars",
-  },
-  {
-    id: "chatbot",
-    name: "AIチャット",
-    tagline: "御社専用のChatGPT",
-    description: "FAQと商品情報を覚えた、あなたのお店専用AIアシスタント。",
-    icon: "💬",
-    color: "from-emerald-500 to-green-600",
-    visual: "chat",
-  },
-  {
-    id: "competitor",
-    name: "競合ウォッチ",
-    tagline: "ライバルの動きを自動追跡",
-    description: "SNS、PR、ニュースから競合の動向を毎週レポート。",
-    icon: "👁️",
-    color: "from-rose-500 to-pink-600",
-    visual: "timeline",
-  },
-  {
-    id: "list-builder",
-    name: "リストビルダー",
-    tagline: "営業リストを自動生成",
-    description: "業種×地域を指定するだけ。連絡先付きリストがすぐ手に入る。",
-    icon: "📋",
-    color: "from-slate-500 to-gray-700",
-    visual: "progress",
-  },
-  {
-    id: "site-check",
-    name: "サイト校正",
-    tagline: "誤字脱字・リンク切れを自動検出",
-    description: "サイト全体をクロールして問題箇所を定期チェック。修正漏れゼロに。",
-    icon: "✍️",
-    color: "from-teal-500 to-cyan-600",
-    visual: "checker",
+    href: "/aeo",
+    ready: true,
   },
   {
     id: "ai-review",
@@ -74,6 +23,49 @@ const tools = [
     icon: "👥",
     color: "from-indigo-500 to-violet-600",
     visual: "crowd",
+    href: "/ai-review",
+    ready: false,
+  },
+  {
+    id: "site-check",
+    name: "サイト校正",
+    tagline: "誤字脱字・リンク切れを自動検出",
+    description: "サイト全体をクロールして問題箇所を定期チェック。修正漏れゼロに。",
+    icon: "✍️",
+    color: "from-teal-500 to-cyan-600",
+    visual: "checker",
+    href: "/site-check",
+    ready: false,
+  },
+  {
+    id: "meo",
+    name: "MEO・口コミ",
+    tagline: "Googleマップの評判を育てる",
+    description: "レビュー促進QRコード発行。口コミ数・評価の推移が一目でわかる。",
+    icon: "⭐",
+    color: "from-amber-500 to-orange-600",
+    visual: "stars",
+    ready: false,
+  },
+  {
+    id: "chatbot",
+    name: "AIチャット",
+    tagline: "御社専用のChatGPT",
+    description: "FAQと商品情報を覚えた、あなたのお店専用AIアシスタント。",
+    icon: "💬",
+    color: "from-emerald-500 to-green-600",
+    visual: "chat",
+    ready: false,
+  },
+  {
+    id: "competitor",
+    name: "競合ウォッチ",
+    tagline: "ライバルの動きを自動追跡",
+    description: "SNS、PR、ニュースから競合の動向を毎週レポート。",
+    icon: "👁️",
+    color: "from-rose-500 to-pink-600",
+    visual: "timeline",
+    ready: false,
   },
 ];
 
@@ -105,32 +97,13 @@ export default function Home() {
       <main className="mx-auto max-w-6xl px-6 pb-20">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {tools.map((tool) => (
-            <div
+            <ToolCard
               key={tool.id}
-              className="group relative overflow-hidden rounded-2xl bg-gray-900 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
-              onMouseEnter={() => setHoveredTool(tool.id)}
-              onMouseLeave={() => setHoveredTool(null)}
-            >
-              {/* 準備中バッジ */}
-              <div className="absolute right-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur">
-                準備中
-              </div>
-
-              {/* ビジュアルゾーン */}
-              <div className={`flex h-48 items-center justify-center bg-gradient-to-br ${tool.color}`}>
-                <ToolVisual type={tool.visual} active={hoveredTool === tool.id} />
-              </div>
-
-              {/* コンテンツ */}
-              <div className="p-6">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{tool.icon}</span>
-                  <h2 className="text-xl font-bold">{tool.name}</h2>
-                </div>
-                <p className="mt-1 text-sm font-medium text-gray-400">{tool.tagline}</p>
-                <p className="mt-3 text-sm text-gray-500">{tool.description}</p>
-              </div>
-            </div>
+              tool={tool}
+              isHovered={hoveredTool === tool.id}
+              onHover={() => setHoveredTool(tool.id)}
+              onLeave={() => setHoveredTool(null)}
+            />
           ))}
         </div>
       </main>
@@ -293,4 +266,84 @@ function ToolVisual({ type, active }: { type: string; active: boolean }) {
     default:
       return null;
   }
+}
+
+interface Tool {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+  icon: string;
+  color: string;
+  visual: string;
+  href?: string;
+  ready: boolean;
+}
+
+/** ツールカード */
+function ToolCard({
+  tool,
+  isHovered,
+  onHover,
+  onLeave,
+}: {
+  tool: Tool;
+  isHovered: boolean;
+  onHover: () => void;
+  onLeave: () => void;
+}) {
+  const cardContent = (
+    <>
+      {/* バッジ */}
+      <div
+        className={`absolute right-4 top-4 z-10 rounded-full px-3 py-1 text-xs font-medium backdrop-blur ${
+          tool.ready ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white"
+        }`}
+      >
+        {tool.ready ? "利用可能" : "準備中"}
+      </div>
+
+      {/* ビジュアルゾーン */}
+      <div
+        className={`flex h-48 items-center justify-center bg-gradient-to-br ${tool.color}`}
+      >
+        <ToolVisual type={tool.visual} active={isHovered} />
+      </div>
+
+      {/* コンテンツ */}
+      <div className="p-6">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{tool.icon}</span>
+          <h2 className="text-xl font-bold">{tool.name}</h2>
+        </div>
+        <p className="mt-1 text-sm font-medium text-gray-400">{tool.tagline}</p>
+        <p className="mt-3 text-sm text-gray-500">{tool.description}</p>
+        {tool.ready && (
+          <p className="mt-4 text-sm font-medium text-cyan-400">今すぐ試す →</p>
+        )}
+      </div>
+    </>
+  );
+
+  const className =
+    "group relative overflow-hidden rounded-2xl bg-gray-900 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl block";
+
+  if (tool.ready && tool.href) {
+    return (
+      <Link
+        href={tool.href}
+        className={className}
+        onMouseEnter={onHover}
+        onMouseLeave={onLeave}
+      >
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={className} onMouseEnter={onHover} onMouseLeave={onLeave}>
+      {cardContent}
+    </div>
+  );
 }

@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ちょいマーケ - MEO監視ダッシュボード",
-  description: "Googleマップの順位・口コミを24時間監視し、AIで改善提案",
+  title: "ちょいAI - シンプルな業務AIツール",
+  description: "ちょっとだけAIが入った、シンプルな業務ツール。1ヶ月無料で試せます。",
 };
 
 export default function RootLayout({
