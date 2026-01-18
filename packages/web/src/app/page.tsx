@@ -114,24 +114,35 @@ export default function Home() {
       {/* CTA */}
       <section className="border-t border-gray-800 bg-gray-900/50">
         <div className="mx-auto max-w-3xl px-6 py-16 text-center">
-          <h2 className="text-2xl font-bold">興味のあるツールはありますか？</h2>
+          <h2 className="text-2xl font-bold">御社専用にカスタマイズできます</h2>
           <p className="mt-2 text-gray-400">
-            開発優先度の参考にさせてください
+            デモツールをベースに、御社の業務に合わせた開発が可能です
           </p>
-          <a
-            href="https://forms.gle/xxxxx"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 inline-block rounded-full bg-white px-8 py-3 font-semibold text-gray-900 transition hover:bg-gray-200"
-          >
-            リクエストを送る
-          </a>
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="mailto:2055@katakanaonline.com?subject=ちょいAI%20導入相談"
+              className="inline-block rounded-full bg-white px-8 py-3 font-semibold text-gray-900 transition hover:bg-gray-200"
+            >
+              導入相談する
+            </a>
+            <a
+              href="https://twitter.com/katakana_j"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block rounded-full bg-gray-800 px-8 py-3 font-semibold text-white transition hover:bg-gray-700"
+            >
+              X（Twitter）でDM
+            </a>
+          </div>
+          <p className="mt-6 text-sm text-gray-500">
+            初回相談無料 / 最短3日で納品
+          </p>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-gray-800 py-8 text-center text-sm text-gray-500">
-        <p>© 2025 ちょいAI</p>
+        <p>© 2026 ちょいAI by カタカナ事務所</p>
       </footer>
     </div>
   );
