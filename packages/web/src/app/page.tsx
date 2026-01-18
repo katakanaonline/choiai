@@ -24,7 +24,7 @@ const tools = [
     color: "from-indigo-500 to-violet-600",
     visual: "crowd",
     href: "/ai-review",
-    ready: false,
+    ready: true,
   },
   {
     id: "site-check",
@@ -35,7 +35,7 @@ const tools = [
     color: "from-teal-500 to-cyan-600",
     visual: "checker",
     href: "/site-check",
-    ready: false,
+    ready: true,
   },
   {
     id: "meo",
