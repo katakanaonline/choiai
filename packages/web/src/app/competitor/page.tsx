@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ShareButton } from "@/components/ShareButton";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { trackToolUsage } from "@/lib/gtag";
 
 interface Activity {
   date: string;
@@ -48,6 +51,9 @@ export default function CompetitorPage() {
     setCompetitors(competitors.filter((_, i) => i !== index));
   };
 
+  const [loadingStep, setLoadingStep] = useState(0);
+  const loadingSteps = ["競合情報を収集中", "SNS・ニュースを分析中", "レポート生成中"];
+
   const handleAnalyze = async () => {
     if (!companyName || !industry || competitors.length === 0) {
       setError("自社名、業界、競合を入力してください");
@@ -55,8 +61,14 @@ export default function CompetitorPage() {
     }
 
     setLoading(true);
+    setLoadingStep(0);
     setError(null);
     setResult(null);
+    trackToolUsage("competitor", "start");
+
+    const stepInterval = setInterval(() => {
+      setLoadingStep((s) => Math.min(s + 1, loadingSteps.length - 1));
+    }, 4000);
 
     try {
       const res = await fetch("/api/competitor", {
@@ -72,9 +84,12 @@ export default function CompetitorPage() {
 
       const data: CompetitorResult = await res.json();
       setResult(data);
+      trackToolUsage("competitor", "complete");
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
+      trackToolUsage("competitor", "error");
     } finally {
+      clearInterval(stepInterval);
       setLoading(false);
     }
   };
@@ -100,6 +115,8 @@ export default function CompetitorPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <LoadingOverlay isLoading={loading} steps={loadingSteps} currentStep={loadingStep} />
+
       {/* Header */}
       <header className="border-b border-gray-800">
         <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">

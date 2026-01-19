@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ShareButton } from "@/components/ShareButton";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { trackToolUsage } from "@/lib/gtag";
 
 interface PersonaReview {
   persona: string;
@@ -29,8 +32,16 @@ export default function AIReview() {
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<ReviewResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadingSteps = [
+    "ページを分析中",
+    "AIペルソナを生成中",
+    "100人のレビューを収集中",
+    "結果を集計中",
+  ];
 
   const handleReview = async () => {
     if (!url) {
@@ -39,8 +50,14 @@ export default function AIReview() {
     }
 
     setLoading(true);
+    setLoadingStep(0);
     setError(null);
     setResult(null);
+    trackToolUsage("ai_review", "start");
+
+    const stepInterval = setInterval(() => {
+      setLoadingStep((s) => Math.min(s + 1, loadingSteps.length - 1));
+    }, 4000);
 
     try {
       const res = await fetch("/api/ai-review", {
@@ -56,9 +73,12 @@ export default function AIReview() {
 
       const data: ReviewResult = await res.json();
       setResult(data);
+      trackToolUsage("ai_review", "complete");
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
+      trackToolUsage("ai_review", "error");
     } finally {
+      clearInterval(stepInterval);
       setLoading(false);
     }
   };
@@ -78,6 +98,12 @@ export default function AIReview() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <LoadingOverlay
+        isLoading={loading}
+        steps={loadingSteps}
+        currentStep={loadingStep}
+      />
+
       {/* Header */}
       <header className="border-b border-gray-800">
         <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
@@ -169,6 +195,15 @@ export default function AIReview() {
         {/* Results */}
         {result && (
           <div className="space-y-8">
+            {/* Share Bar */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-400">レビュー結果</h2>
+              <ShareButton
+                title={`100人AIレビュー: 平均スコア ${result.summary.averageScore}点`}
+                text={`100人のAIがレビューした結果、平均スコアは${result.summary.averageScore}点でした！ #ちょいAI #100人AIレビュー`}
+              />
+            </div>
+
             {/* Summary Card */}
             <div className="bg-gray-900 rounded-2xl p-8">
               <h3 className="text-lg font-bold mb-6 text-center">

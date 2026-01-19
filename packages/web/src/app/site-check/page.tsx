@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ShareButton } from "@/components/ShareButton";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { trackToolUsage } from "@/lib/gtag";
 
 interface Issue {
   type: "typo" | "broken_link" | "seo" | "accessibility";
@@ -29,8 +32,11 @@ interface CheckResult {
 export default function SiteCheck() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadingSteps = ["ページを取得中", "コンテンツを解析中", "問題を検出中"];
 
   const handleCheck = async () => {
     if (!url) {
@@ -39,8 +45,14 @@ export default function SiteCheck() {
     }
 
     setLoading(true);
+    setLoadingStep(0);
     setError(null);
     setResult(null);
+    trackToolUsage("site_check", "start");
+
+    const stepInterval = setInterval(() => {
+      setLoadingStep((s) => Math.min(s + 1, loadingSteps.length - 1));
+    }, 3000);
 
     try {
       const res = await fetch("/api/site-check", {
@@ -56,9 +68,12 @@ export default function SiteCheck() {
 
       const data: CheckResult = await res.json();
       setResult(data);
+      trackToolUsage("site_check", "complete");
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
+      trackToolUsage("site_check", "error");
     } finally {
+      clearInterval(stepInterval);
       setLoading(false);
     }
   };
@@ -114,6 +129,8 @@ export default function SiteCheck() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <LoadingOverlay isLoading={loading} steps={loadingSteps} currentStep={loadingStep} />
+
       {/* Header */}
       <header className="border-b border-gray-800">
         <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">

@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ShareButton } from "@/components/ShareButton";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { trackToolUsage } from "@/lib/gtag";
 
 interface Review {
   author: string;
@@ -31,8 +34,11 @@ export default function MeoPage() {
   const [businessName, setBusinessName] = useState("");
   const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<MeoResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadingSteps = ["店舗情報を検索中", "口コミを分析中", "レポート生成中"];
 
   const handleAnalyze = async () => {
     if (!businessName || !location) {
@@ -41,8 +47,14 @@ export default function MeoPage() {
     }
 
     setLoading(true);
+    setLoadingStep(0);
     setError(null);
     setResult(null);
+    trackToolUsage("meo", "start");
+
+    const stepInterval = setInterval(() => {
+      setLoadingStep((s) => Math.min(s + 1, loadingSteps.length - 1));
+    }, 3000);
 
     try {
       const res = await fetch("/api/meo", {
@@ -58,9 +70,12 @@ export default function MeoPage() {
 
       const data: MeoResult = await res.json();
       setResult(data);
+      trackToolUsage("meo", "complete");
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
+      trackToolUsage("meo", "error");
     } finally {
+      clearInterval(stepInterval);
       setLoading(false);
     }
   };
@@ -82,6 +97,8 @@ export default function MeoPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <LoadingOverlay isLoading={loading} steps={loadingSteps} currentStep={loadingStep} />
+
       {/* Header */}
       <header className="border-b border-gray-800">
         <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">

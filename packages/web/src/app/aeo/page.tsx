@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ShareButton } from "@/components/ShareButton";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { trackToolUsage } from "@/lib/gtag";
 
 interface PlatformResult {
   platform: string;
@@ -23,8 +26,15 @@ export default function AeoChecker() {
   const [industry, setIndustry] = useState("");
   const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<AeoResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadingSteps = [
+    "ChatGPTに問い合わせ中",
+    "Claudeに問い合わせ中",
+    "結果を分析中",
+  ];
 
   const handleCheck = async () => {
     if (!companyName || !industry || !location) {
@@ -33,8 +43,15 @@ export default function AeoChecker() {
     }
 
     setLoading(true);
+    setLoadingStep(0);
     setError(null);
     setResult(null);
+    trackToolUsage("aeo_checker", "start");
+
+    // Simulate progress
+    const stepInterval = setInterval(() => {
+      setLoadingStep((s) => Math.min(s + 1, loadingSteps.length - 1));
+    }, 3000);
 
     try {
       const res = await fetch("/api/aeo/check", {
@@ -50,9 +67,12 @@ export default function AeoChecker() {
 
       const data: AeoResult = await res.json();
       setResult(data);
+      trackToolUsage("aeo_checker", "complete");
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
+      trackToolUsage("aeo_checker", "error");
     } finally {
+      clearInterval(stepInterval);
       setLoading(false);
     }
   };
@@ -71,6 +91,12 @@ export default function AeoChecker() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <LoadingOverlay
+        isLoading={loading}
+        steps={loadingSteps}
+        currentStep={loadingStep}
+      />
+
       {/* Header */}
       <header className="border-b border-gray-800">
         <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
@@ -174,6 +200,15 @@ export default function AeoChecker() {
         {/* Results */}
         {result && (
           <div className="space-y-8">
+            {/* Share Bar */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-400">チェック結果</h2>
+              <ShareButton
+                title={`${result.companyName}のAEOスコア: ${result.score}点`}
+                text={`${result.companyName}のAI検索スコアは${result.score}点でした！ #ちょいAI #AEOチェッカー`}
+              />
+            </div>
+
             {/* Score Card */}
             <div className="bg-gray-900 rounded-2xl p-8">
               <div className="flex flex-col md:flex-row items-center gap-8">

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { trackToolUsage } from "@/lib/gtag";
 
 interface Message {
   role: "user" | "assistant";
