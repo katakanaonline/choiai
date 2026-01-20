@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { trackToolUsage } from "@/lib/gtag";
 
@@ -9,12 +9,17 @@ interface Post {
   content: string;
   imageUrl?: string;
   platforms: string[];
-  createdAt: Date;
+  createdAt: string;
   stats?: {
     views: number;
     reactions: number;
-    clicks: number;
   };
+}
+
+interface Rewrite {
+  platform: string;
+  original: string;
+  rewritten: string;
 }
 
 interface DailyReport {
@@ -27,40 +32,8 @@ interface DailyReport {
   };
   sentiment: number;
   tips: string[];
+  recentPosts: Post[];
 }
-
-// Sample data
-const SAMPLE_POSTS: Post[] = [
-  {
-    id: "1",
-    content: "今日のランチは自家製ミートソースパスタ。トマトは地元農家から直送です",
-    platforms: ["gbp", "x", "instagram"],
-    createdAt: new Date(Date.now() - 86400000),
-    stats: { views: 45, reactions: 12, clicks: 5 },
-  },
-  {
-    id: "2",
-    content: "週末限定デザート始まりました。チーズケーキ、売り切れ御免です！",
-    platforms: ["gbp", "x"],
-    createdAt: new Date(Date.now() - 172800000),
-    stats: { views: 89, reactions: 23, clicks: 8 },
-  },
-];
-
-const SAMPLE_REPORT: DailyReport = {
-  date: new Date().toLocaleDateString("ja-JP"),
-  discoveryCount: 15,
-  totalViews: 234,
-  topPost: {
-    content: "週末限定デザート始まりました",
-    views: 89,
-  },
-  sentiment: 85,
-  tips: [
-    "写真付き投稿は反応が2倍になる傾向があります",
-    "14時〜16時の投稿がよく見られています",
-  ],
-};
 
 const PLATFORM_ICONS: Record<string, { icon: string; name: string; color: string }> = {
   gbp: { icon: "📍", name: "Google", color: "text-blue-400" },
@@ -74,8 +47,31 @@ export default function ShukyakuBotPage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["gbp", "x"]);
   const [isPosting, setIsPosting] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
+  const [report, setReport] = useState<DailyReport | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rewrites, setRewrites] = useState<Rewrite[]>([]);
+  const [showRewrites, setShowRewrites] = useState(false);
+  const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 初回読み込み時にレポートを取得
+  useEffect(() => {
+    fetchReport();
+  }, []);
+
+  const fetchReport = async () => {
+    try {
+      const res = await fetch("/api/shukyaku-bot");
+      if (res.ok) {
+        const data = await res.json();
+        setReport(data);
+      }
+    } catch (error) {
+      console.error("Report fetch error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,23 +88,37 @@ export default function ShukyakuBotPage() {
     if (!postContent.trim()) return;
 
     setIsPosting(true);
-    trackToolUsage("shukyaku_bot", "post_created");
+    trackToolUsage("shukyaku_bot", "start");
 
-    // Simulate posting
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const res = await fetch("/api/shukyaku-bot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: postContent,
+          imageUrl: selectedImage,
+          platforms: selectedPlatforms,
+        }),
+      });
 
-    const newPost: Post = {
-      id: Date.now().toString(),
-      content: postContent,
-      imageUrl: selectedImage || undefined,
-      platforms: selectedPlatforms,
-      createdAt: new Date(),
-    };
-
-    setPosts([newPost, ...posts]);
-    setPostContent("");
-    setSelectedImage(null);
-    setIsPosting(false);
+      if (res.ok) {
+        const data = await res.json();
+        setRewrites(data.rewrites || []);
+        setShowRewrites(true);
+        setPostContent("");
+        setSelectedImage(null);
+        // レポートを再取得
+        fetchReport();
+      } else {
+        const error = await res.json();
+        alert(error.error || "投稿に失敗しました");
+      }
+    } catch (error) {
+      console.error("Post error:", error);
+      alert("投稿に失敗しました");
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   const togglePlatform = (platform: string) => {
@@ -117,6 +127,26 @@ export default function ShukyakuBotPage() {
         ? prev.filter((p) => p !== platform)
         : [...prev, platform]
     );
+  };
+
+  const copyToClipboard = async (text: string, platform: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPlatform(platform);
+      setTimeout(() => setCopiedPlatform(null), 2000);
+    } catch (error) {
+      console.error("Copy error:", error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ja-JP", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -139,10 +169,50 @@ export default function ShukyakuBotPage() {
           </div>
           <h1 className="text-3xl font-bold mb-2">集客ボット</h1>
           <p className="text-gray-400 max-w-lg mx-auto">
-            1日1投稿するだけ。あとはAIが自動で各プラットフォームに配信し、
+            1日1投稿するだけ。AIが各プラットフォーム向けに最適化し、
             夜には「今日何人に見つかったか」をレポートします。
           </p>
         </section>
+
+        {/* AI Rewrites Modal */}
+        {showRewrites && rewrites.length > 0 && (
+          <section className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 rounded-2xl p-6 border border-purple-500/30">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold flex items-center gap-2">
+                <span className="text-xl">✨</span>
+                AIが最適化しました
+              </h2>
+              <button
+                onClick={() => setShowRewrites(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              各プラットフォーム向けに最適化されたテキストをコピーして投稿してください
+            </p>
+            <div className="space-y-4">
+              {rewrites.map((rewrite) => (
+                <div key={rewrite.platform} className="bg-gray-800/50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`font-medium ${PLATFORM_ICONS[rewrite.platform]?.color}`}>
+                      {PLATFORM_ICONS[rewrite.platform]?.icon}{" "}
+                      {PLATFORM_ICONS[rewrite.platform]?.name}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(rewrite.rewritten, rewrite.platform)}
+                      className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-sm transition-colors"
+                    >
+                      {copiedPlatform === rewrite.platform ? "コピーしました!" : "コピー"}
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-300 whitespace-pre-wrap">{rewrite.rewritten}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Post Input Section */}
         <section className="bg-gray-900 rounded-2xl p-6">
@@ -220,7 +290,7 @@ export default function ShukyakuBotPage() {
                 disabled={!postContent.trim() || isPosting || selectedPlatforms.length === 0}
                 className="px-6 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
-                {isPosting ? "投稿中..." : "投稿する"}
+                {isPosting ? "AIが最適化中..." : "投稿する"}
               </button>
             </div>
           </div>
@@ -241,47 +311,57 @@ export default function ShukyakuBotPage() {
             </button>
           </div>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-gray-800 rounded-xl p-4 text-center">
-              <div className="text-3xl font-bold text-purple-400">{SAMPLE_REPORT.discoveryCount}</div>
-              <div className="text-sm text-gray-400 mt-1">人に見つかりました</div>
-            </div>
-            <div className="bg-gray-800 rounded-xl p-4 text-center">
-              <div className="text-3xl font-bold text-blue-400">{SAMPLE_REPORT.totalViews}</div>
-              <div className="text-sm text-gray-400 mt-1">表示回数</div>
-            </div>
-            <div className="bg-gray-800 rounded-xl p-4 text-center">
-              <div className="text-3xl font-bold text-emerald-400">{SAMPLE_REPORT.sentiment}%</div>
-              <div className="text-sm text-gray-400 mt-1">好感度</div>
-            </div>
-            <div className="bg-gray-800 rounded-xl p-4 text-center">
-              <div className="text-3xl font-bold text-amber-400">{posts.length}</div>
-              <div className="text-sm text-gray-400 mt-1">投稿数</div>
-            </div>
-          </div>
+          {isLoading ? (
+            <div className="text-center py-8 text-gray-500">読み込み中...</div>
+          ) : report ? (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-800 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold text-purple-400">{report.discoveryCount}</div>
+                  <div className="text-sm text-gray-400 mt-1">人に見つかりました</div>
+                </div>
+                <div className="bg-gray-800 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold text-blue-400">{report.totalViews}</div>
+                  <div className="text-sm text-gray-400 mt-1">表示回数</div>
+                </div>
+                <div className="bg-gray-800 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold text-emerald-400">{report.sentiment}%</div>
+                  <div className="text-sm text-gray-400 mt-1">好感度</div>
+                </div>
+                <div className="bg-gray-800 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold text-amber-400">{report.recentPosts?.length || 0}</div>
+                  <div className="text-sm text-gray-400 mt-1">投稿数</div>
+                </div>
+              </div>
 
-          {showReport && (
-            <div className="space-y-4">
-              {/* Top Performing Post */}
-              {SAMPLE_REPORT.topPost && (
-                <div className="bg-gray-800/50 rounded-xl p-4">
-                  <div className="text-sm text-gray-400 mb-2">一番反応がよかった投稿</div>
-                  <p className="text-sm">{SAMPLE_REPORT.topPost.content}</p>
-                  <div className="mt-2 text-xs text-purple-400">{SAMPLE_REPORT.topPost.views}回表示</div>
+              {showReport && (
+                <div className="space-y-4">
+                  {/* Top Performing Post */}
+                  {report.topPost && (
+                    <div className="bg-gray-800/50 rounded-xl p-4">
+                      <div className="text-sm text-gray-400 mb-2">一番反応がよかった投稿</div>
+                      <p className="text-sm">{report.topPost.content}</p>
+                      <div className="mt-2 text-xs text-purple-400">{report.topPost.views}回表示</div>
+                    </div>
+                  )}
+
+                  {/* Tips */}
+                  {report.tips && report.tips.length > 0 && (
+                    <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-xl p-4 border border-purple-500/20">
+                      <div className="text-sm font-bold text-purple-300 mb-2">💡 今週のヒント</div>
+                      <ul className="space-y-1">
+                        {report.tips.map((tip, i) => (
+                          <li key={i} className="text-sm text-gray-300">・{tip}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
-
-              {/* Tips */}
-              <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-xl p-4 border border-purple-500/20">
-                <div className="text-sm font-bold text-purple-300 mb-2">💡 今週のヒント</div>
-                <ul className="space-y-1">
-                  {SAMPLE_REPORT.tips.map((tip, i) => (
-                    <li key={i} className="text-sm text-gray-300">・{tip}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+            </>
+          ) : (
+            <div className="text-center py-8 text-gray-500">レポートを取得できませんでした</div>
           )}
         </section>
 
@@ -293,38 +373,33 @@ export default function ShukyakuBotPage() {
           </h2>
 
           <div className="space-y-4">
-            {posts.map((post) => (
-              <div key={post.id} className="bg-gray-800 rounded-xl p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm mb-2">{post.content}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {post.platforms.map((p) => (
-                        <span key={p} className={`text-xs ${PLATFORM_ICONS[p]?.color || 'text-gray-400'}`}>
-                          {PLATFORM_ICONS[p]?.icon} {PLATFORM_ICONS[p]?.name}
-                        </span>
-                      ))}
+            {report?.recentPosts && report.recentPosts.length > 0 ? (
+              report.recentPosts.map((post) => (
+                <div key={post.id} className="bg-gray-800 rounded-xl p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm mb-2">{post.content}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {post.platforms.map((p) => (
+                          <span key={p} className={`text-xs ${PLATFORM_ICONS[p]?.color || 'text-gray-400'}`}>
+                            {PLATFORM_ICONS[p]?.icon} {PLATFORM_ICONS[p]?.name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                    {post.stats && (
+                      <div className="text-right text-xs text-gray-400">
+                        <div>{post.stats.views}回表示</div>
+                        <div>{post.stats.reactions}反応</div>
+                      </div>
+                    )}
                   </div>
-                  {post.stats && (
-                    <div className="text-right text-xs text-gray-400">
-                      <div>{post.stats.views}回表示</div>
-                      <div>{post.stats.reactions}反応</div>
-                    </div>
-                  )}
+                  <div className="mt-2 text-xs text-gray-500">
+                    {formatDate(post.createdAt)}
+                  </div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  {post.createdAt.toLocaleDateString("ja-JP", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {posts.length === 0 && (
+              ))
+            ) : (
               <div className="text-center py-8 text-gray-500">
                 まだ投稿がありません。上のフォームから投稿してみましょう！
               </div>
