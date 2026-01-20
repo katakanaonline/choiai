@@ -440,18 +440,24 @@ alert_settings (
 
 **TODO**:
 - [x] UIプロトタイプ作成（1画面完結） ← 2026/01/20完了
-- [ ] 投稿→GBP/SNS自動展開の実装確認
-- [ ] 夜間レポート生成機能
+- [x] AIリライト機能（プラットフォーム別最適化） ← 2026/01/20完了
+- [x] Supabase連携（投稿保存・履歴管理） ← 2026/01/20完了
+- [ ] 投稿→GBP/SNS自動展開の実装確認（API連携）
+- [ ] 夜間レポート生成機能（cron-job.org）
 - [ ] フィードバック機能（「3日前の投稿が効いた」）
 - [ ] 口コミQRコード生成
 - [ ] LINE連携（来店後リマインド）
 - [ ] 料金プラン設計（¥5,000で成立するか検証）
 
 **実装済み（2026/01/20）**:
-- `/shukyaku-bot` ページ: 投稿入力UI + デイリーレポート表示
-- `/api/shukyaku-bot` API: POST(投稿)、GET(レポート)
+- `/shukyaku-bot` ページ: 投稿入力UI + デイリーレポート表示 + AIリライト結果表示
+- `/api/shukyaku-bot` API: POST(投稿+AIリライト)、GET(レポート+AIヒント生成)
 - プラットフォーム選択（GBP/X/Instagram）
-- サンプルデータ表示でプロトタイプ確認可能
+- Anthropic SDK連携（claude-3-5-haiku-latest使用）
+- プラットフォーム別最適化テキスト生成+コピーボタン
+- Supabaseテーブル設計（`003_shukyaku_bot.sql`）
+- `ai-rewrite.ts`: AIリライト・ヒント生成ユーティリティ
+- `supabase.ts`: Supabaseクライアント
 
 **既存資産（流用可能）**:
 - `sns-x.ts`, `sns-instagram.ts` - SNS取得

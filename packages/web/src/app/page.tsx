@@ -71,6 +71,17 @@ const tools = [
     ready: true,
   },
   {
+    id: "minutes",
+    name: "議事録自動生成",
+    tagline: "会議メモをAIが整理",
+    description: "文字起こしを貼り付けるだけ。要点整理・決定事項・TODO抽出まで一括で。",
+    icon: "📝",
+    color: "from-blue-500 to-indigo-600",
+    visual: "document",
+    href: "/minutes",
+    ready: true,
+  },
+  {
     id: "aeo",
     name: "AEOチェッカー",
     tagline: "AIに自社が出てるか確認",
