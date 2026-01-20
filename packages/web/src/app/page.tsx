@@ -5,17 +5,6 @@ import Link from "next/link";
 
 const tools = [
   {
-    id: "aeo",
-    name: "AEOチェッカー",
-    tagline: "AIに自社が出てるか確認",
-    description: "ChatGPT、Claudeで御社が言及されてるかチェック。",
-    icon: "🤖",
-    color: "from-cyan-500 to-blue-600",
-    visual: "multiline",
-    href: "/aeo",
-    ready: true,
-  },
-  {
     id: "ai-review",
     name: "100人AIレビュー",
     tagline: "AIモニター100人が御社を評価",
@@ -69,6 +58,27 @@ const tools = [
     visual: "timeline",
     href: "/competitor",
     ready: true,
+  },
+  {
+    id: "shukyaku-bot",
+    name: "集客ボット",
+    tagline: "1日1投稿で集客おまかせ",
+    description: "MEO・SEO・AEOを統合。毎日の投稿だけで、あとはAIが集客を最適化。夜にフィードバック付きレポート。",
+    icon: "🚀",
+    color: "from-purple-500 to-pink-600",
+    visual: "progress",
+    href: "/shukyaku-bot",
+    ready: true,
+  },
+  {
+    id: "aeo",
+    name: "AEOチェッカー",
+    tagline: "AIに自社が出てるか確認",
+    description: "ChatGPT、Geminiで御社が言及されてるかチェック。集客ボットに統合予定。",
+    icon: "🤖",
+    color: "from-cyan-500 to-blue-600",
+    visual: "multiline",
+    ready: false,
   },
 ];
 
