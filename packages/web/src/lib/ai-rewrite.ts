@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { generateWithOllama, isOllamaAvailable } from "./ollama";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -66,6 +67,7 @@ export async function rewriteForPlatforms(
 
 /**
  * 単一プラットフォーム向けにリライト
+ * Ollama (DeepSeek) 優先、Claudeフォールバック
  */
 async function rewriteForPlatform(
   content: string,
@@ -81,6 +83,21 @@ ${content}
 
 ${PLATFORM_PROMPTS[platform]}`;
 
+  const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+
+  // Ollama優先
+  if (await isOllamaAvailable()) {
+    try {
+      console.log(`[AI-Rewrite] Using Ollama for ${platform}`);
+      const result = await generateWithOllama(fullPrompt, 500);
+      return result || content;
+    } catch (error) {
+      console.error(`[AI-Rewrite] Ollama error, fallback to Claude:`, error);
+    }
+  }
+
+  // Claudeフォールバック
+  console.log(`[AI-Rewrite] Using Claude for ${platform}`);
   const response = await anthropic.messages.create({
     model: "claude-3-5-haiku-latest",
     max_tokens: 500,
@@ -99,16 +116,19 @@ ${PLATFORM_PROMPTS[platform]}`;
 
 /**
  * 投稿内容からデイリーレポート用のヒントを生成
+ * Ollama (DeepSeek) 優先、Claudeフォールバック
  */
 export async function generateDailyTips(
   recentPosts: { content: string; views: number; reactions: number }[]
 ): Promise<string[]> {
+  const defaultTips = [
+    "写真付き投稿は反応が2倍になる傾向があります",
+    "14時〜16時の投稿がよく見られています",
+    "まずは1日1投稿を続けてみましょう",
+  ];
+
   if (recentPosts.length === 0) {
-    return [
-      "写真付き投稿は反応が2倍になる傾向があります",
-      "14時〜16時の投稿がよく見られています",
-      "まずは1日1投稿を続けてみましょう",
-    ];
+    return defaultTips;
   }
 
   const systemPrompt = `あなたは地域密着型店舗のマーケティングアドバイザーです。
@@ -119,23 +139,42 @@ export async function generateDailyTips(
     .map((p, i) => `${i + 1}. "${p.content.slice(0, 50)}..." (${p.views}表示, ${p.reactions}反応)`)
     .join("\n");
 
+  const userPrompt = `最近の投稿データ:\n${postsData}\n\n3つのアドバイスを箇条書きで（「・」で始める）:`;
+  const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+
+  // Ollama優先
+  if (await isOllamaAvailable()) {
+    try {
+      console.log("[Daily-Tips] Using Ollama");
+      const text = await generateWithOllama(fullPrompt, 300);
+      const tips = text
+        .split("\n")
+        .filter((line) => line.startsWith("・") || line.startsWith("-"))
+        .map((line) => line.replace(/^[・-]\s*/, "").trim())
+        .filter((tip) => tip.length > 0)
+        .slice(0, 3);
+
+      if (tips.length > 0) {
+        return tips;
+      }
+    } catch (error) {
+      console.error("[Daily-Tips] Ollama error, fallback to Claude:", error);
+    }
+  }
+
+  // Claudeフォールバック
   try {
+    console.log("[Daily-Tips] Using Claude");
     const response = await anthropic.messages.create({
       model: "claude-3-5-haiku-latest",
       max_tokens: 300,
-      messages: [
-        {
-          role: "user",
-          content: `最近の投稿データ:\n${postsData}\n\n3つのアドバイスを箇条書きで（「・」で始める）:`,
-        },
-      ],
+      messages: [{ role: "user", content: userPrompt }],
       system: systemPrompt,
     });
 
     const textBlock = response.content.find((block) => block.type === "text");
     const text = textBlock?.text || "";
 
-    // 箇条書きを配列に変換
     const tips = text
       .split("\n")
       .filter((line) => line.startsWith("・") || line.startsWith("-"))
@@ -143,19 +182,12 @@ export async function generateDailyTips(
       .filter((tip) => tip.length > 0)
       .slice(0, 3);
 
-    if (tips.length === 0) {
-      return [
-        "写真付き投稿は反応が2倍になる傾向があります",
-        "定期的な投稿がフォロワー増加につながります",
-      ];
+    if (tips.length > 0) {
+      return tips;
     }
-
-    return tips;
   } catch (error) {
-    console.error("Tips generation error:", error);
-    return [
-      "写真付き投稿は反応が2倍になる傾向があります",
-      "14時〜16時の投稿がよく見られています",
-    ];
+    console.error("[Daily-Tips] Claude error:", error);
   }
+
+  return defaultTips;
 }
